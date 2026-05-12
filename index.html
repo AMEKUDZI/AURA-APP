@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#6366f1">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="favicon.png" type="image/png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <title>Aura | Private Global Messenger</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="orb orb-1"></div>
+
+    <!-- Onboarding Screen -->
+    <div class="screen" id="onboardScreen">
+        <div class="auth-hero" style="margin-bottom:24px;">
+            <h1>Welcome 👋</h1>
+            <p>Set up your profile to get started</p>
+        </div>
+        <div class="glass-card" id="onboardCard">
+            <div style="text-align:center; margin-bottom:16px;">
+                <img id="onboardAvatar" src="https://via.placeholder.com/90" style="width:90px;height:90px;border-radius:50%;border:2px solid var(--primary);object-fit:cover;">
+                <input type="file" id="onboardAvatarInput" hidden accept="image/*" onchange="onboardUploadAvatar(this)">
+                <br>
+                <button onclick="document.getElementById('onboardAvatarInput').click()" class="btn-primary" style="margin-top:12px;padding:10px;">Add Photo</button>
+            </div>
+            <input type="text" id="onboardName" class="input-field" placeholder="Your display name" maxlength="30">
+            <button class="btn-primary" onclick="finishOnboarding()">Start Chatting →</button>
+        </div>
+    </div>
+
+    <!-- Auth Screen -->
+    <div class="screen active" id="authScreen">
+        <div class="auth-hero">
+            <h1>Aura</h1>
+            <p>Secure. Global. Minimal.</p>
+        </div>
+        <div class="glass-card">
+            <div class="input-field country-picker" onclick="openCountryModal()">
+                <span id="currentFlagName">🇳🇬 Nigeria (+234)</span><span>▼</span>
+            </div>
+            <input type="tel" id="phoneInput" class="input-field" placeholder="Phone Number">
+            <button class="btn-primary" id="sendCodeBtn" onclick="sendOTP()">Verify Number</button>
+            <div id="otpBox" style="display:none; margin-top:20px;">
+                <input type="text" id="otpInput" class="input-field" placeholder="6-digit Code" maxlength="6" inputmode="numeric">
+                <button class="btn-primary" onclick="verifyOTP()">Enter Aura</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inbox Screen -->
+    <div class="screen" id="inboxScreen">
+        <div class="screen-header">
+            <h2>Aura</h2>
+            <div style="display:flex; gap:10px;">
+                <button onclick="showScreen('newGroupScreen')" class="icon-btn" title="New Group">👥</button>
+                <button onclick="shareAura()" class="icon-btn">🔗</button>
+                <button onclick="showScreen('settingsScreen')" class="icon-btn">⚙️</button>
+            </div>
+        </div>
+        <input type="text" id="userSearchInput" class="input-field" placeholder="🔍 Search people or groups...">
+        <div id="inboxList" class="inbox-list"></div>
+    </div>
+
+    <!-- New Group Screen -->
+    <div class="screen" id="newGroupScreen">
+        <div class="screen-header">
+            <button onclick="showScreen('inboxScreen')" class="icon-btn">←</button>
+            <h2>New Group</h2>
+        </div>
+        <div class="glass-card" style="margin-bottom:14px;">
+            <input type="text" id="groupNameInput" class="input-field" placeholder="Group name" maxlength="40">
+            <input type="text" id="groupSearchInput" class="input-field" placeholder="🔍 Search members..." oninput="searchGroupMembers(this.value)">
+            <div id="groupMemberResults"></div>
+        </div>
+        <div id="selectedMembersBar" class="selected-members-bar"></div>
+        <button class="btn-primary" onclick="createGroup()">Create Group</button>
+    </div>
+
+    <!-- Group Chat Screen -->
+    <div class="screen" id="groupChatScreen">
+        <div class="screen-header">
+            <button onclick="showScreen('inboxScreen')" class="icon-btn">←</button>
+            <div class="chat-peer-info" onclick="showScreen('groupInfoScreen')" style="cursor:pointer;">
+                <div id="groupChatAvatar" class="avatar avatar-placeholder" style="font-size:20px;">👥</div>
+                <div>
+                    <div id="groupChatName" class="chat-peer-name">Group</div>
+                    <div id="groupChatMembers" class="chat-peer-status"></div>
+                </div>
+            </div>
+        </div>
+        <div id="groupMsgContainer" class="msg-container"></div>
+        <div id="groupTypingIndicator" class="typing-indicator">typing<span class="dots"></span></div>
+        <div id="groupReplyBar" class="reply-bar" style="display:none;">
+            <span id="groupReplyText" class="reply-bar-text"></span>
+            <button onclick="clearGroupReply()" class="icon-btn">✕</button>
+        </div>
+        <div class="msg-bar">
+            <label class="icon-btn" for="groupFileInput">📎</label>
+            <input type="file" id="groupFileInput" hidden accept="image/*,.pdf,.doc,.docx,.zip" onchange="sendGroupFile(this)">
+            <input type="text" id="groupMsgInput" class="input-field" placeholder="Message..." oninput="handleGroupTyping()">
+            <button class="btn-primary" onclick="sendGroupMessage()" style="width:auto;padding:14px;">➤</button>
+        </div>
+    </div>
+
+    <!-- Group Info Screen -->
+    <div class="screen" id="groupInfoScreen">
+        <div class="screen-header">
+            <button onclick="showScreen('groupChatScreen')" class="icon-btn">←</button>
+            <h2>Group Info</h2>
+        </div>
+        <div class="glass-card" id="groupInfoCard">
+            <div style="text-align:center; margin-bottom:16px;">
+                <div id="groupInfoAvatar" class="avatar avatar-placeholder" style="width:80px;height:80px;font-size:32px;margin:0 auto 10px;">👥</div>
+                <h3 id="groupInfoName"></h3>
+                <p id="groupInfoCount" style="opacity:0.5;font-size:13px;"></p>
+            </div>
+            <div id="groupMemberList"></div>
+            <button class="btn-primary" style="margin-top:16px;background:var(--glass);" onclick="leaveGroup()">Leave Group</button>
+        </div>
+    </div>
+
+    <!-- Chat Screen -->
+    <div class="screen" id="chatScreen">
+        <div class="screen-header">
+            <button onclick="showScreen('inboxScreen')" class="icon-btn">←</button>
+            <div class="chat-peer-info">
+                <img id="chatPeerAvatar" class="avatar" style="display:none;" alt="avatar">
+                <div>
+                    <div id="chatPeerName" class="chat-peer-name">Chat</div>
+                    <div id="chatPeerStatus" class="chat-peer-status"></div>
+                </div>
+            </div>
+            <button onclick="toggleSearch()" class="icon-btn">🔍</button>
+            <button onclick="openGallery()" class="icon-btn">🖼️</button>
+            <button onclick="blockUser()" class="icon-btn" title="Block">🚫</button>
+            <button onclick="reportUser()" class="icon-btn" title="Report">⚠️</button>
+        </div>
+        <div id="searchBar" style="display:none; gap:8px; margin-bottom:8px; flex-shrink:0;">
+            <input type="text" id="searchInput" class="input-field" placeholder="Search messages..." style="margin:0;">
+            <button class="btn-primary" onclick="searchMessages()" style="width:auto;padding:10px 14px;">🔍</button>
+        </div>
+        <div id="msgContainer"></div>
+        <div id="typingIndicator" class="typing-indicator">typing<span class="dots"></span></div>
+        <div id="replyBar" class="reply-bar" style="display:none;">
+            <span id="replyText" class="reply-bar-text"></span>
+            <button onclick="clearReply()" class="icon-btn">✕</button>
+        </div>
+        <div class="msg-bar">
+            <label class="icon-btn" for="fileInput">📎</label>
+            <input type="file" id="fileInput" hidden accept="image/*,video/*,.pdf,.doc,.docx,.zip" onchange="sendFile(this)">
+            <input type="text" id="msgInput" class="input-field" placeholder="Message..." oninput="handleTyping()">
+            <button id="voiceBtn" class="btn-primary" style="background:var(--glass);" onmousedown="startRecording()" onmouseup="stopRecording()">🎤</button>
+            <button class="btn-primary" onclick="sendMessage()">➤</button>
+        </div>
+    </div>
+
+    <!-- Reaction Picker -->
+    <div id="reactionPicker" class="reaction-picker" style="display:none;">
+        <span onclick="reactToMessage(document.getElementById('reactionPicker').dataset.msgId,'❤️')">❤️</span>
+        <span onclick="reactToMessage(document.getElementById('reactionPicker').dataset.msgId,'😂')">😂</span>
+        <span onclick="reactToMessage(document.getElementById('reactionPicker').dataset.msgId,'👍')">👍</span>
+        <span onclick="reactToMessage(document.getElementById('reactionPicker').dataset.msgId,'😮')">😮</span>
+        <span onclick="reactToMessage(document.getElementById('reactionPicker').dataset.msgId,'😢')">😢</span>
+        <span onclick="reactToMessage(document.getElementById('reactionPicker').dataset.msgId,'🔥')">🔥</span>
+    </div>
+
+    <!-- Message Action Menu -->
+    <div id="msgActionMenu" class="msg-action-menu" style="display:none;">
+        <button id="actionReply">↩ Reply</button>
+        <button id="actionReact">😊 React</button>
+        <button id="actionCopy">📋 Copy</button>
+        <button id="actionDelete" style="color:var(--secondary)">🗑 Delete</button>
+    </div>
+
+    <!-- Settings Screen -->
+    <div class="screen" id="settingsScreen">
+        <div class="screen-header">
+            <button onclick="showScreen('inboxScreen')" class="icon-btn">←</button>
+            <h2>Profile</h2>
+        </div>
+        <div class="glass-card" id="settingsCard">
+            <img id="avatarPreview" src="https://via.placeholder.com/100" alt="Avatar">
+            <input type="file" id="avatarInput" hidden accept="image/*" onchange="uploadAvatar(this)">
+            <button onclick="document.getElementById('avatarInput').click()" class="btn-primary" style="margin:15px 0; padding:10px;">Upload Photo</button>
+            <input type="text" id="nameInput" class="input-field" placeholder="Display Name">
+            <button class="btn-primary" onclick="saveProfile()">Update Profile</button>
+            <button onclick="logout()" class="btn-logout">Logout</button>
+        </div>
+    </div>
+
+    <!-- Admin Screen -->
+    <div class="screen" id="adminScreen">
+        <div class="screen-header">
+            <button onclick="showScreen('inboxScreen')" class="icon-btn">←</button>
+            <h2>Admin</h2>
+        </div>
+        <div class="admin-stats">
+            <div class="glass-card"><h4>Users</h4><p id="statUsers">0</p></div>
+            <div class="glass-card"><h4>Chats</h4><p id="statMsgs">0</p></div>
+        </div>
+        <div class="glass-card">
+            <h3 style="margin-bottom:12px;">Broadcast</h3>
+            <input type="text" id="broadcastMsg" class="input-field" placeholder="Message to everyone...">
+            <button class="btn-primary" onclick="sendBroadcast()">Post Announcement</button>
+        </div>
+    </div>
+
+    <!-- Country Picker Modal -->
+    <div id="countryModal">
+        <input type="text" class="input-field" placeholder="Search Country..." oninput="filterCountries(this.value)">
+        <div id="countryList"></div>
+        <button class="btn-primary" onclick="closeCountryModal()" style="background:var(--glass);">Cancel</button>
+    </div>
+
+    <!-- Media Viewer -->
+    <div id="mediaViewer" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.95); z-index:3000; align-items:center; justify-content:center; flex-direction:column;" onclick="closeMediaViewer()">
+        <img id="mediaViewerImg" style="max-width:95vw; max-height:90vh; border-radius:12px; object-fit:contain;">
+        <button onclick="closeMediaViewer()" class="icon-btn" style="margin-top:16px; font-size:22px;">✕</button>
+    </div>
+
+    <!-- Gallery Modal -->
+    <div id="galleryModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.97); z-index:3000; flex-direction:column; padding:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3>Shared Media</h3>
+            <button onclick="closeGallery()" class="icon-btn">✕</button>
+        </div>
+        <div id="galleryGrid" class="gallery-grid"></div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>

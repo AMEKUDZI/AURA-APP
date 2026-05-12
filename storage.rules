@@ -1,0 +1,40 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Avatars — owner can write, anyone authenticated can read
+    match /avatars/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024   // 5MB max
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Chat files (images, docs) — only chat members can read/write
+    // chatId is uid1_uid2 sorted — we verify the uploader is one of them
+    match /files/{chatId}/{fileName} {
+      allow read: if request.auth != null
+        && request.auth.uid in chatId.split('_');
+      allow write: if request.auth != null
+        && request.auth.uid in chatId.split('_')
+        && request.resource.size < 20 * 1024 * 1024;  // 20MB max
+    }
+
+    // Voice messages — same rule as files
+    match /voice/{chatId}/{fileName} {
+      allow read: if request.auth != null
+        && request.auth.uid in chatId.split('_');
+      allow write: if request.auth != null
+        && request.auth.uid in chatId.split('_')
+        && request.resource.size < 10 * 1024 * 1024   // 10MB max
+        && request.resource.contentType.matches('audio/.*');
+    }
+
+    // Group chat files
+    match /groups/{groupId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.resource.size < 20 * 1024 * 1024;
+    }
+  }
+}
