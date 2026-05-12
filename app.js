@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
     getFirestore, collection, addDoc, query, orderBy, onSnapshot,
     serverTimestamp, setDoc, doc, updateDoc, getDocs, getDoc, where,
@@ -137,21 +137,27 @@ window.filterCountries = (t) => {
 window.sendOTP = async () => {
     const raw = document.getElementById("phoneInput").value.trim();
     if (!raw) return alert("Enter your phone number.");
-    const cleaned = raw.replace(/^0+/, "").replace(/\s+/g, "").replace(/-/g, "");
+    // Strip all spaces, dashes, brackets and leading zeros
+    const cleaned = raw.replace(/[\s\-().]/g, "").replace(/^0+/, "");
     const num = selectedCode + cleaned;
-    console.log("Sending OTP to:", num);
     if (!/^\+[1-9]\d{6,14}$/.test(num)) {
-        return alert(`Invalid number format: ${num}\n\nMake sure you:\n- Selected the right country\n- Did NOT include country code when typing\n- Did NOT include leading zero`);
+        return alert(`Invalid number: ${num}\n\nDo NOT include country code or leading zero.\nExample for 0243123456 → type 243123456`);
     }
     const btn = document.getElementById("sendCodeBtn");
-    btn.disabled = true; btn.textContent = "Sending...";
+    btn.disabled = true;
+    btn.textContent = "Sending...";
     try {
+        initRecaptcha();
         window.confirmationResult = await signInWithPhoneNumber(auth, num, window.recaptchaVerifier);
         document.getElementById("otpBox").style.display = "block";
         btn.textContent = "Code Sent ✓";
     } catch (e) {
-        alert("Failed to send code: " + e.message + "\n\nNumber tried: " + num);
-        btn.disabled = false; btn.textContent = "Verify Number";
+        // Reset recaptcha on error so user can try again
+        window.recaptchaVerifier?.clear();
+        window.recaptchaVerifier = null;
+        btn.disabled = false;
+        btn.textContent = "Verify Number";
+        alert("Failed: " + e.message + "\n\nNumber tried: " + num);
     }
 };
 
@@ -175,12 +181,20 @@ window.logout = async () => {
 window.signInWithGoogle = async () => {
     try {
         const provider = new GoogleAuthProvider();
-        await signInWithPopup(auth, provider);
+        const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+        if (isMobile) {
+            await signInWithRedirect(auth, provider);
+        } else {
+            await signInWithPopup(auth, provider);
+        }
         Notification.requestPermission();
     } catch (e) {
         alert("Google sign-in failed: " + e.message);
     }
 };
+
+// Handle redirect result on page load
+getRedirectResult(auth).catch(() => {});
 
 // ── PRESENCE ──
 async function setPresence(online) {
@@ -1005,6 +1019,14 @@ function loadGroupsInInbox(list) {
 
 window.onload = () => {
     window.filterCountries("");
-    window.recaptchaVerifier = new RecaptchaVerifier(auth, "sendCodeBtn", { size: "invisible" });
+    // Initialise recaptcha only when user clicks Verify Number
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
 };
+
+function initRecaptcha() {
+    if (window.recaptchaVerifier) return;
+    window.recaptchaVerifier = new RecaptchaVerifier(auth, "sendCodeBtn", {
+        size: "invisible",
+        callback: () => {}
+    });
+}
