@@ -18,7 +18,7 @@ const firebaseConfig = {
     appId: "1:921414427500:web:957668da87de96ca754949"
 };
 
-const ADMIN_NUMBER = "+2330543643780"; // Replace with your phone number
+const ADMIN_NUMBER = "+233543643780";
 // Get this from Firebase Console → Project Settings → Cloud Messaging → VAPID key
 const VAPID_KEY = "BOW-RZphXDwKS0Od9vCSHE_esyOQG-8hvNz65FhhJ2dLgpXd2uLJkZuN7VMTCHnqFmahwHRz0q7ekk5GqPgdfls";
 
