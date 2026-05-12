@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
     getFirestore, collection, addDoc, query, orderBy, onSnapshot,
     serverTimestamp, setDoc, doc, updateDoc, getDocs, getDoc, where,
@@ -169,6 +169,17 @@ window.verifyOTP = async () => {
 window.logout = async () => {
     await setPresence(false);
     signOut(auth);
+};
+
+// ── GOOGLE SIGN-IN ──
+window.signInWithGoogle = async () => {
+    try {
+        const provider = new GoogleAuthProvider();
+        await signInWithPopup(auth, provider);
+        Notification.requestPermission();
+    } catch (e) {
+        alert("Google sign-in failed: " + e.message);
+    }
 };
 
 // ── PRESENCE ──
@@ -630,9 +641,19 @@ onAuthStateChanged(auth, async user => {
     if (user) {
         await setDoc(doc(db, "users", user.uid), {
             uid: user.uid,
-            phone: user.phoneNumber,
+            phone: user.phoneNumber || "",
+            email: user.email || "",
             lastSeen: serverTimestamp()
         }, { merge: true });
+
+        // Pre-fill Google profile if available
+        if (user.displayName || user.photoURL) {
+            await setDoc(doc(db, "users", user.uid), {
+                name: user.displayName || "",
+                avatar: user.photoURL || "",
+                onboarded: true
+            }, { merge: true });
+        }
 
         setPresence(true);
         initPushNotifications();
