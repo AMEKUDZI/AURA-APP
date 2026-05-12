@@ -137,7 +137,12 @@ window.filterCountries = (t) => {
 window.sendOTP = async () => {
     const raw = document.getElementById("phoneInput").value.trim();
     if (!raw) return alert("Enter your phone number.");
-    const num = selectedCode + raw.replace(/^0+/, "");
+    const cleaned = raw.replace(/^0+/, "").replace(/\s+/g, "").replace(/-/g, "");
+    const num = selectedCode + cleaned;
+    console.log("Sending OTP to:", num);
+    if (!/^\+[1-9]\d{6,14}$/.test(num)) {
+        return alert(`Invalid number format: ${num}\n\nMake sure you:\n- Selected the right country\n- Did NOT include country code when typing\n- Did NOT include leading zero`);
+    }
     const btn = document.getElementById("sendCodeBtn");
     btn.disabled = true; btn.textContent = "Sending...";
     try {
@@ -145,7 +150,7 @@ window.sendOTP = async () => {
         document.getElementById("otpBox").style.display = "block";
         btn.textContent = "Code Sent ✓";
     } catch (e) {
-        alert("Failed to send code: " + e.message);
+        alert("Failed to send code: " + e.message + "\n\nNumber tried: " + num);
         btn.disabled = false; btn.textContent = "Verify Number";
     }
 };
