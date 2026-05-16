@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
     getFirestore, collection, addDoc, query, orderBy, onSnapshot,
     serverTimestamp, setDoc, doc, updateDoc, getDocs, getDoc, where,
@@ -169,6 +169,56 @@ window.verifyOTP = async () => {
         Notification.requestPermission();
     } catch (e) {
         alert("Invalid code: " + e.message);
+    }
+};
+
+// ── AUTH TABS ──
+let authMode = "login";
+window.switchAuthTab = (mode) => {
+    authMode = mode;
+    document.getElementById("tabLogin").classList.toggle("active", mode === "login");
+    document.getElementById("tabSignup").classList.toggle("active", mode === "signup");
+    document.getElementById("confirmPasswordInput").style.display = mode === "signup" ? "block" : "none";
+    document.getElementById("authSubmitBtn").textContent = mode === "signup" ? "Create Account" : "Sign In";
+    document.getElementById("forgotPassword").style.display = mode === "login" ? "block" : "none";
+};
+
+// ── EMAIL AUTH ──
+window.submitEmailAuth = async () => {
+    const email = document.getElementById("emailInput").value.trim();
+    const password = document.getElementById("passwordInput").value;
+    const confirm = document.getElementById("confirmPasswordInput").value;
+    if (!email || !password) return showToast("Enter email and password.");
+    if (authMode === "signup" && password !== confirm) return showToast("Passwords do not match.");
+    if (password.length < 6) return showToast("Password must be at least 6 characters.");
+    const btn = document.getElementById("authSubmitBtn");
+    btn.disabled = true; btn.textContent = "Please wait...";
+    try {
+        if (authMode === "signup") {
+            await createUserWithEmailAndPassword(auth, email, password);
+        } else {
+            await signInWithEmailAndPassword(auth, email, password);
+        }
+    } catch (e) {
+        const msg = e.code === "auth/email-already-in-use" ? "Email already registered. Sign in instead."
+            : e.code === "auth/user-not-found" ? "No account found. Sign up instead."
+            : e.code === "auth/wrong-password" ? "Incorrect password."
+            : e.code === "auth/invalid-email" ? "Invalid email address."
+            : e.message;
+        showToast(msg);
+        btn.disabled = false;
+        btn.textContent = authMode === "signup" ? "Create Account" : "Sign In";
+    }
+};
+
+window.resetPassword = async () => {
+    const email = document.getElementById("emailInput").value.trim();
+    if (!email) return showToast("Enter your email address first.");
+    try {
+        await sendPasswordResetEmail(auth, email);
+        showToast("Reset link sent to " + email);
+    } catch (e) {
+        showToast("Failed: " + e.message);
     }
 };
 

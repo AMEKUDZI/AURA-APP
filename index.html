@@ -39,15 +39,21 @@
             <p>Secure. Global. Minimal.</p>
         </div>
         <div class="glass-card">
-            <div class="input-field country-picker" onclick="openCountryModal()">
-                <span id="currentFlagName">🇳🇬 Nigeria (+234)</span><span>▼</span>
+            <!-- Tabs -->
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Sign In</button>
+                <button class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">Sign Up</button>
             </div>
-            <input type="tel" id="phoneInput" class="input-field" placeholder="Phone Number">
-            <button class="btn-primary" id="sendCodeBtn" onclick="sendOTP()">Verify Number</button>
-            <div id="otpBox" style="display:none; margin-top:20px;">
-                <input type="text" id="otpInput" class="input-field" placeholder="6-digit Code" maxlength="6" inputmode="numeric">
-                <button class="btn-primary" onclick="verifyOTP()">Enter Aura</button>
+
+            <!-- Email/Password Form -->
+            <div id="authForm">
+                <input type="email" id="emailInput" class="input-field" placeholder="Email address" inputmode="email">
+                <input type="password" id="passwordInput" class="input-field" placeholder="Password">
+                <input type="password" id="confirmPasswordInput" class="input-field" placeholder="Confirm Password" style="display:none;">
+                <button class="btn-primary" id="authSubmitBtn" onclick="submitEmailAuth()">Sign In</button>
+                <p id="forgotPassword" style="text-align:center; margin-top:10px; font-size:13px; opacity:0.6; cursor:pointer;" onclick="resetPassword()">Forgot password?</p>
             </div>
+
             <div class="auth-divider"><span>or</span></div>
             <button class="btn-google" onclick="signInWithGoogle()">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20">
