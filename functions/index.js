@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
@@ -76,3 +77,40 @@ exports.onNewGroupMessage = onDocumentCreated(
         });
     }
 );
+=======
+const functions = require('firebase-functions');
+const admin = require('firebase-admin');
+admin.initializeApp();
+
+// --- MESSAGE EXPIRATION (7 days) ---
+exports.deleteOldMessages = functions.pubsub.schedule('every 24 hours').onRun(async () => {
+    const cutoff = admin.firestore.Timestamp.fromDate(
+        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    );
+    const snapshot = await admin.firestore().collection('aura_chat')
+        .where('time', '<', cutoff)
+        .get();
+    const batch = admin.firestore().batch();
+    snapshot.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+    functions.logger.info(`Deleted ${snapshot.size} old messages`);
+});
+
+// --- CLEANUP RATE LIMITS (hourly) ---
+exports.cleanupRateLimits = functions.pubsub.schedule('every 60 minutes').onRun(async () => {
+    const cutoff = admin.firestore.Timestamp.fromDate(
+        new Date(Date.now() - 60 * 60 * 1000)
+    );
+    const snapshot = await admin.firestore().collection('rate_limits')
+        .where('__name__', '!=', 'whitelist')
+        .get();
+    const batch = admin.firestore().batch();
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        const recent = data.requests?.filter(t => Date.now() - t < 60 * 60 * 1000) || [];
+        if (recent.length === 0) batch.delete(doc.ref);
+        else batch.update(doc.ref, { requests: recent });
+    });
+    await batch.commit();
+});
+>>>>>>> 2a78dcb (feat: security hardening, Firebase rules, Cloud Functions)

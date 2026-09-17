@@ -1,5 +1,6 @@
 {
   "name": "aura-functions",
+<<<<<<< HEAD
   "version": "1.0.0",
   "main": "index.js",
   "dependencies": {
@@ -7,3 +8,19 @@
     "firebase-functions": "^4.0.0"
   }
 }
+=======
+  "description": "Aura Messenger Cloud Functions",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^14.4.0",
+    "firebase-functions": "^7.4.0"
+  }
+}
+>>>>>>> 2a78dcb (feat: security hardening, Firebase rules, Cloud Functions)

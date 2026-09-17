@@ -1,0 +1,382 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; connect-src 'self' https://www.gstatic.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://storage.googleapis.com; media-src 'self' https:; frame-src 'self' https://www.gstatic.com;">
+    <link rel="manifest" href="manifest.json">
+    <title>Aura | Private Global Messenger</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #6366f1; --secondary: #ec4899; --accent: #4ade80;
+            --bg: #0a0a0f; --glass: rgba(255, 255, 255, 0.07);
+            --border: rgba(255, 255, 255, 0.1); --text: #ffffff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', sans-serif; }
+        body { background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+
+        /* UI Shell */
+        .orb { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.4; z-index: -1; animation: pulse 15s infinite; }
+        .orb-1 { width: 400px; height: 400px; background: var(--primary); top: -10%; left: -10%; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+
+        .screen { position: absolute; width: 100%; height: 100%; display: none; flex-direction: column; padding: 25px; transition: 0.3s; }
+        .active { display: flex; }
+
+        .glass-card { background: var(--glass); border: 1px solid var(--border); border-radius: 28px; padding: 25px; backdrop-filter: blur(20px); }
+        .input-field { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border); padding: 16px; border-radius: 15px; color: white; margin-bottom: 12px; outline: none; font-size: 16px; }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--secondary)); border: none; padding: 18px; border-radius: 15px; color: white; font-weight: 600; cursor: pointer; font-size: 16px; width: 100%; }
+
+        /* Messaging UI */
+        #msgContainer { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 12px; }
+        .msg { padding: 12px 18px; border-radius: 20px; max-width: 80%; line-height: 1.4; position: relative; }
+        .sent { align-self: flex-end; background: var(--primary); border-bottom-right-radius: 4px; }
+        .received { align-self: flex-start; background: var(--glass); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+        .status-tick { font-size: 11px; margin-left: 6px; float: right; margin-top: 4px; }
+        
+        /* Indicators */
+        #countryModal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); backdrop-filter:blur(20px); z-index:1000; display:none; flex-direction:column; padding:20px; }
+        .typing-indicator { font-size: 13px; color: var(--accent); margin-bottom: 8px; display: none; font-style: italic; }
+        .dots::after { content: '.'; animation: dots 1.5s steps(5, end) infinite; }
+        @keyframes dots { 0%, 20% { content: '.'; } 40% { content: '..'; } 60%, 100% { content: '...'; } }
+    </style>
+</head>
+<body>
+    <div class="orb orb-1"></div>
+
+    <div class="screen active" id="authScreen">
+        <div style="text-align: center; margin: 50px 0;">
+            <h1 style="font-size: 52px; letter-spacing: -2px;">Aura</h1>
+            <p style="opacity: 0.6;">Secure. Global. Minimal.</p>
+        </div>
+        <div class="glass-card">
+            <div class="input-field" onclick="openCountryModal()" style="cursor: pointer; display: flex; justify-content: space-between;">
+                <span id="currentFlagName">🇳🇬 Nigeria (+234)</span><span>▼</span>
+            </div>
+            <input type="tel" id="phoneInput" class="input-field" placeholder="Phone Number">
+            <button class="btn-primary" id="sendCodeBtn" onclick="sendOTP()">Verify Number</button>
+            <div id="otpBox" style="display:none; margin-top: 20px;">
+                <input type="text" id="otpInput" class="input-field" placeholder="6-digit Code">
+                <button class="btn-primary" onclick="verifyOTP()">Enter Aura</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="screen" id="mainScreen">
+        <div style="padding-bottom: 15px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+            <h2 onclick="showScreen('settingsScreen')" style="cursor:pointer">Settings ⚙️</h2>
+            <button onclick="shareAura()" style="background:none; border:none; color:var(--primary); font-weight:600;">Invite 🔗</button>
+        </div>
+        <div id="msgContainer"></div>
+        <div id="typingIndicator" class="typing-indicator">Someone is typing<span class="dots"></span></div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <input type="text" id="msgInput" class="input-field" placeholder="Message..." style="margin-bottom:0;" oninput="handleTyping()">
+            <button id="voiceBtn" class="btn-primary" style="width:auto; padding:15px; background:var(--glass);" onmousedown="startRecording()" onmouseup="stopRecording()">🎤</button>
+            <button class="btn-primary" onclick="sendMessage()" style="width:auto; padding:15px 25px;">➤</button>
+        </div>
+    </div>
+
+    <div class="screen" id="settingsScreen">
+        <button onclick="showScreen('mainScreen')" style="background:none; border:none; color:white; margin-bottom:20px;">← Back</button>
+        <div class="glass-card" style="text-align: center;">
+            <img id="avatarPreview" src="https://via.placeholder.com/100" style="width: 100px; height: 100px; border-radius: 50%; border: 2px solid var(--primary); object-fit: cover;">
+            <input type="file" id="avatarInput" hidden onchange="uploadAvatar(this)">
+            <button onclick="document.getElementById('avatarInput').click()" class="btn-primary" style="margin: 15px 0; padding:10px;">Upload Photo</button>
+            <input type="text" id="nameInput" class="input-field" placeholder="Display Name">
+            <button class="btn-primary" onclick="saveProfile()">Update Profile</button>
+            <button onclick="logout()" style="margin-top: 20px; color: var(--secondary); background:none; border:none;">Logout</button>
+        </div>
+    </div>
+
+    <div class="screen" id="adminScreen">
+        <button onclick="showScreen('mainScreen')" style="background:none; border:none; color:white;">← Exit Admin</button>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0;">
+            <div class="glass-card"><h4>Users</h4><p id="statUsers">0</p></div>
+            <div class="glass-card"><h4>Texts</h4><p id="statMsgs">0</p></div>
+        </div>
+        <div class="glass-card">
+            <h3>Broadcast</h3>
+            <input type="text" id="broadcastMsg" class="input-field" placeholder="To everyone...">
+            <button class="btn-primary" onclick="sendBroadcast()">Post Announcement</button>
+        </div>
+    </div>
+
+    <div id="countryModal">
+        <input type="text" class="input-field" placeholder="Search Country..." oninput="filterCountries(this.value)">
+        <div id="countryList"></div>
+        <button class="btn-primary" onclick="closeCountryModal()" style="background:var(--glass);">Cancel</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, setDoc, doc, updateDoc, getDocs, where, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+
+        // CONFIG: Replace with your Firebase credentials
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+        const ADMIN_IDS = ["YOUR_ADMIN_UID_1", "YOUR_ADMIN_UID_2"]; // Set in Firestore "admins" collection
+
+        // --- ENCRYPTION (E2EE) ---
+        // Generate unique key per user from their phone number + server salt
+        async function getCipherKey(phoneNumber) {
+            const enc = new TextEncoder();
+            // Get user-specific salt from Firestore, or create one
+            let salt;
+            try {
+                const saltDoc = await getDoc(doc(db, "user salts", phoneNumber));
+                if (saltDoc.exists()) {
+                    salt = enc.encode(saltDoc.data().salt);
+                } else {
+                    salt = crypto.getRandomValues(new Uint8Array(16));
+                    await setDoc(doc(db, "user salts", phoneNumber), { salt: btoa(String.fromCharCode(...salt)) });
+                }
+            } catch {
+                salt = enc.encode(phoneNumber); // Fallback
+            }
+            const material = await crypto.subtle.importKey("raw", enc.encode(phoneNumber), {name:"PBKDF2"}, false, ["deriveKey"]);
+            return await crypto.subtle.deriveKey({name:"PBKDF2", salt, iterations:100000, hash:"SHA-256"}, material, {name:"AES-GCM", length:256}, false, ["encrypt", "decrypt"]);
+        }
+
+        async function encrypt(text, phoneNumber) {
+            const key = await getCipherKey(phoneNumber);
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const encrypted = await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, new TextEncoder().encode(text));
+            return { c: btoa(String.fromCharCode(...new Uint8Array(encrypted))), i: btoa(String.fromCharCode(...iv)) };
+        }
+
+        async function decrypt(c, i, phoneNumber) {
+            try {
+                const key = await getCipherKey(phoneNumber);
+                const dec = await crypto.subtle.decrypt({name:"AES-GCM", iv: Uint8Array.from(atob(i), char=>char.charCodeAt(0))}, key, Uint8Array.from(atob(c), char=>char.charCodeAt(0)));
+                return new TextDecoder().decode(dec);
+            } catch(e) { return "🔒 Private Message"; }
+        }
+
+        // --- VOICE RECORDER ---
+        const MAX_VOICE_SIZE = 5 * 1024 * 1024; // 5MB
+        let recorder, chunks = [];
+        window.startRecording = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                recorder = new MediaRecorder(stream);
+                chunks = [];
+                recorder.ondataavailable = e => chunks.push(e.data);
+                recorder.onstop = async () => {
+                    const blob = new Blob(chunks, { type: 'audio/mpeg' });
+                    if (blob.size > MAX_VOICE_SIZE) { alert('Voice message too large (max 5MB)'); return; }
+                    const r = ref(storage, `voice/${auth.currentUser.uid}/${Date.now()}.mp3`);
+                    try {
+                        const snap = await uploadBytes(r, blob);
+                        const url = await getDownloadURL(snap.ref);
+                        await addDoc(collection(db, "aura_chat"), { 
+                            audioUrl: url, 
+                            type: "voice", 
+                            uid: auth.currentUser.uid,
+                            senderPhone: window.currentPhone,
+                            time: serverTimestamp(), 
+                            status: "sent" 
+                        });
+                    } catch (e) { alert('Upload failed'); logError('voice_upload', e); }
+                };
+                recorder.start();
+            } catch (e) { alert('Microphone access denied'); logError('mic_access', e); }
+        };
+        window.stopRecording = () => recorder?.stop();
+
+        // --- CORE LOGIC ---
+        let selectedCode = "+234";
+        const countries = [
+            {n:"Nigeria", c:"+234", f:"🇳🇬"}, {n:"Ghana", c:"+233", f:"🇬🇭"},
+            {n:"Kenya", c:"+254", f:"🇰🇪"}, {n:"USA", c:"+1", f:"🇺🇸"},
+            {n:"UK", c:"+44", f:"🇬🇧"}, {n:"India", c:"+91", f:"🇮🇳"}
+        ];
+
+        window.openCountryModal = () => document.getElementById('countryModal').style.display = 'flex';
+        window.closeCountryModal = () => document.getElementById('countryModal').style.display = 'none';
+        window.selectCountry = (f,n,c) => { selectedCode=c; document.getElementById('currentFlagName').innerText=`${f} ${n} (${c})`; closeCountryModal(); };
+        window.showScreen = (id) => { document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); };
+
+        // --- RATE LIMITING ---
+        const OTP_LIMIT = 3; // requests per minute
+        const OTP_WINDOW = 60 * 1000;
+        
+        async function checkRateLimit(phone) {
+            try {
+                const now = Date.now();
+                const rateDoc = await getDoc(doc(db, "rate_limits", phone));
+                if (rateDoc.exists()) {
+                    const data = rateDoc.data();
+                    const recent = data.requests.filter(t => now - t < OTP_WINDOW);
+                    if (recent.length >= OTP_LIMIT) {
+                        const wait = Math.ceil((OTP_WINDOW - (now - data.requests[0])) / 1000);
+                        alert(`Too many requests. Wait ${wait}s`);
+                        return false;
+                    }
+                    await setDoc(doc(db, "rate_limits", phone), { requests: [...recent, now] });
+                } else {
+                    await setDoc(doc(db, "rate_limits", phone), { requests: [now] });
+                }
+            } catch (e) { logError('rate_limit', e); }
+            return true;
+        }
+
+        // --- ERROR LOGGING ---
+        async function logError(type, error) {
+            try {
+                await addDoc(collection(db, "errors"), {
+                    type, message: error.message || String(error),
+                    url: window.location.href,
+                    user: auth.currentUser?.uid || 'anonymous',
+                    time: serverTimestamp()
+                });
+            } catch { /* ignore */ }
+        }
+
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'sendCodeBtn', { 'size': 'invisible' });
+        window.sendOTP = async () => {
+            const phoneVal = document.getElementById('phoneInput').value.replace(/^0+/, '');
+            if (!/^[0-9]{7,15}$/.test(phoneVal)) { alert('Invalid phone number'); return; }
+            const num = selectedCode + phoneVal;
+            if (!await checkRateLimit(num)) return;
+            window.currentPhone = num;
+            try {
+                window.confirmationResult = await signInWithPhoneNumber(auth, num, window.recaptchaVerifier);
+                document.getElementById('otpBox').style.display = 'block';
+            } catch (e) { alert('Error sending code'); logError('otp_send', e); }
+        };
+        window.verifyOTP = async () => {
+            const otp = document.getElementById('otpInput').value;
+            if (!/^[0-9]{6}$/.test(otp)) { alert('Enter 6-digit code'); return; }
+            try {
+                await window.confirmationResult.confirm(otp);
+                Notification.requestPermission();
+            } catch (e) { alert('Invalid code'); logError('otp_verify', e); }
+        };
+
+        window.handleTyping = () => {
+            setDoc(doc(db, "aura_presence", auth.currentUser.uid), { isTyping: true });
+            clearTimeout(window.tOut);
+            window.tOut = setTimeout(() => setDoc(doc(db, "aura_presence", auth.currentUser.uid), { isTyping: false }), 2000);
+        };
+
+        window.sendMessage = async () => {
+            const t = document.getElementById('msgInput').value;
+            if(!t) return;
+            try {
+                const encrypted = await encrypt(t, window.currentPhone);
+                await addDoc(collection(db, "aura_chat"), { 
+                    content: encrypted.c, 
+                    iv: encrypted.i, 
+                    type: "text", 
+                    uid: auth.currentUser.uid,
+                    senderPhone: window.currentPhone,
+                    time: serverTimestamp(), 
+                    status: "sent" 
+                });
+                document.getElementById('msgInput').value = "";
+            } catch (e) { alert('Failed to send'); logError('send_message', e); }
+        };
+
+        // --- SYNC ENGINE ---
+        let isAdmin = false;
+        onAuthStateChanged(auth, async user => {
+            if(user) {
+                window.currentPhone = user.phoneNumber;
+                // Verify admin status from Firestore
+                const adminDoc = await getDoc(doc(db, "admins", user.uid));
+                isAdmin = adminDoc.exists() || ADMIN_IDS.includes(user.uid);
+                showScreen('mainScreen');
+                syncData();
+                if(isAdmin) {
+                    document.body.insertAdjacentHTML('beforeend', `<button onclick="if(isAdmin){loadAdmin(); showScreen('adminScreen');}" style="position:fixed; bottom:20px; left:20px; background:gold; border:none; border-radius:50%; width:40px; height:40px; font-weight:bold; z-index:1000;">★</button>`);
+                }
+            } else { showScreen('authScreen'); }
+        });
+
+        async function syncData() {
+            // Live Messages
+            onSnapshot(query(collection(db, "aura_chat"), orderBy("time", "asc")), async snap => {
+                const cont = document.getElementById('msgContainer');
+                let html = "";
+                for(let doc of snap.docs) {
+                    const d = doc.data();
+                    const isMe = d.uid === auth.currentUser.uid;
+                    const senderPhone = d.senderPhone || window.currentPhone;
+                    const content = d.type === "voice" ? `<audio controls src="${d.audioUrl}"></audio>` : await decrypt(d.content, d.iv, senderPhone);
+                    const tick = isMe ? (d.status === 'read' ? '✓✓' : '✓') : '';
+                    html += `<div class="msg ${isMe ? 'sent' : 'received'}">${content}<div class="status-tick" style="color:${d.status === 'read' ? 'var(--accent)' : '#fff5'}">${tick}</div></div>`;
+                    if(!isMe && d.status === 'sent') updateDoc(doc.ref, { status: 'read' });
+                }
+                cont.innerHTML = html;
+                cont.scrollTop = cont.scrollHeight;
+            });
+
+            // Presence
+            onSnapshot(collection(db, "aura_presence"), snap => {
+                let show = false;
+                snap.forEach(d => { if(d.id !== auth.currentUser.uid && d.data().isTyping) show = true; });
+                document.getElementById('typingIndicator').style.display = show ? 'block' : 'none';
+            });
+        }
+
+        // --- ADMIN & TOOLS ---
+        window.loadAdmin = async () => {
+            document.getElementById('statUsers').innerText = (await getDocs(collection(db, "users"))).size;
+            document.getElementById('statMsgs').innerText = (await getDocs(collection(db, "aura_chat"))).size;
+        };
+        window.sendBroadcast = async () => {
+            if (!isAdmin) { alert('Unauthorized'); return; }
+            const t = document.getElementById('broadcastMsg').value;
+            if (!t) return;
+            const enc = await encrypt("📢 ADMIN: " + t, "SYSTEM");
+            await addDoc(collection(db, "aura_chat"), { content: enc.c, iv: enc.i, type: "text", uid: "SYSTEM", senderPhone: "SYSTEM", time: serverTimestamp(), status: "sent" });
+            alert("Broadcast active.");
+        };
+
+        window.shareAura = () => navigator.share({ title: 'Aura', text: 'Join me on Aura!', url: window.location.href });
+        window.logout = () => signOut(auth);
+        window.saveProfile = async () => {
+            try {
+                await setDoc(doc(db, "users", auth.currentUser.uid), { 
+                    name: document.getElementById('nameInput').value,
+                    updatedAt: serverTimestamp()
+                }, { merge: true });
+                alert('Profile updated');
+            } catch (e) { alert('Update failed'); logError('profile_update', e); }
+        };
+        window.filterCountries = (t) => {
+            const filtered = countries.filter(c => c.n.toLowerCase().includes(t.toLowerCase()) || c.c.includes(t));
+            document.getElementById('countryList').innerHTML = filtered.map(item => `<div class="country-item" style="padding:15px; border-bottom:1px solid #fff2; cursor:pointer;" onclick="selectCountry('${item.f}','${item.n}','${item.c}')"><span>${item.f} ${item.n}</span> <span style="opacity:0.5; float:right;">${item.c}</span></div>`).join('');
+        };
+        window.onload = () => { 
+            window.filterCountries(''); 
+            if ('serviceWorker' in navigator) { 
+                navigator.serviceWorker.register('sw.js').catch(e => logError('sw_register', e));
+            }
+        };
+
+        // Global error handler
+        window.addEventListener('error', e => logError('global', e.error || e.message));
+    </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "aura_chat",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "time", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "aura_chat",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "time", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

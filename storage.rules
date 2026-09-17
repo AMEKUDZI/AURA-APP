@@ -1,6 +1,7 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+<<<<<<< HEAD
 
     // Avatars — owner can write, anyone authenticated can read
     match /avatars/{userId} {
@@ -35,6 +36,22 @@ service firebase.storage {
       allow read: if request.auth != null;
       allow write: if request.auth != null
         && request.resource.size < 20 * 1024 * 1024;
+=======
+    match /voice/{userId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.hasPrefix('audio/');
+    }
+
+    match /avatars/{userId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.hasPrefix('image/');
+>>>>>>> 2a78dcb (feat: security hardening, Firebase rules, Cloud Functions)
     }
   }
 }
